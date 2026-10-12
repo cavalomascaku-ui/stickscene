@@ -56,7 +56,6 @@ class SequencePlayer extends ChangeNotifier {
       _position = 0;
     }
     _playing = true;
-    _lastTick = Duration.zero;
     notifyListeners();
   }
 

@@ -117,7 +117,7 @@ void showPoseSheet(
                 if (selected is FigureObject) {
                   c.mutate(() {
                     final anchors = Map<Anchor, Vec2>.from(fig.anchors);
-                    c.updateFigureAnchors(selected.copy(), anchors);
+                    c.updateFigureAnchors(selected.copy(selected.id), anchors);
                   });
                 } else {
                   c.addFigure(fig);

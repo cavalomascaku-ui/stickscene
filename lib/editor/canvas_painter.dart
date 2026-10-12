@@ -394,7 +394,7 @@ class ScenePainter extends CustomPainter {
       ),
       textAlign: switch (o.align) {
         LabelAlign.left => TextAlign.left,
-        LabelAlign.center => LabelAlign.center,
+        LabelAlign.center => TextAlign.center,
         LabelAlign.right => TextAlign.right,
       },
       textDirection: TextDirection.ltr,
