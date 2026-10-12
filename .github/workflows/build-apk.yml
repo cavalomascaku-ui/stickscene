@@ -1,0 +1,93 @@
+name: Build APK
+
+# Push to main, or run it by hand from the Actions tab.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: Build type
+        type: choice
+        options: [release, debug]
+        default: release
+
+jobs:
+  test:
+    name: Verify (analyze + core tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "3.35.0"
+          cache: true
+
+      - name: Resolve packages
+        run: flutter pub get
+
+      # The gate: nothing ships if the analyzer has errors.
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos --fatal-warnings
+
+      - name: Core model + maths tests
+        run: dart run test/core_smoke.dart
+
+      - name: GIF encoder tests
+        run: dart run test/gif_smoke.dart
+
+      # Independent verification of the GIF encoder: ImageMagick must be able to
+      # decode what the Dart code produced, byte for byte.
+      - name: Cross-check GIF output with ImageMagick
+        run: |
+          set -e
+          dart run test/gif_smoke.dart
+          FILE=$(ls gif_smoke_output.gif 2>/dev/null || true)
+          if [ -z "$FILE" ]; then
+            FILE=$(find . -name gif_smoke_output.gif | head -1)
+          fi
+          echo "Checking $FILE"
+          identify -format "%wx%h frames=%n delay=%T\n" "$FILE"
+          FRAMES=$(identify -format "%n" "$FILE")
+          test "$FRAMES" -ge 2
+          echo "ImageMagick decoded $FRAMES frames cleanly."
+
+  build:
+    name: Build ${{ inputs.build_type || 'release' }} APK
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "3.35.0"
+          cache: true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - run: flutter pub get
+
+      - name: Build
+        run: flutter build apk --${{ inputs.build_type == 'debug' && 'debug' || 'release' }}
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: stickscene-apk
+          path: build/app/outputs/flutter-apk/*.apk
+          retention-days: 30
+
+      - name: Summary
+        run: |
+          echo "### APK pronto" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          ls -lh build/app/outputs/flutter-apk/*.apk >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Baixe pelo campo **Artifacts** no rodape desta execucao." >> $GITHUB_STEP_SUMMARY

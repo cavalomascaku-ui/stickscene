@@ -1,0 +1,35 @@
+name: stickscene
+description: "StickScene V2 - stick figure animation studio, clean-room rebuild."
+publish_to: 'none'
+
+version: 2.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Pure Dart. The GIF encoder is written in-repo (lib/export/gif_encoder.dart),
+  # so no image codec dependency is needed.
+  collection: ^1.18.0
+  provider: ^6.1.1
+
+  # Platform (thin, well-maintained)
+  path_provider: ^2.1.3
+  file_picker: ^8.0.4
+  audioplayers: ^6.0.0
+  share_plus: ^10.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  # No bundled asset files: the launcher icon is an Android vector drawable and
+  # the stick figures are drawn in code, so the APK stays tiny.
