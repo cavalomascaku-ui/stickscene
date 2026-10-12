@@ -206,8 +206,11 @@ class SequenceExporter {
   /// pixels. Shared with the MP4 pipeline, which needs the raw pixels to hand
   /// to the platform channel.
   Future<RenderedFrame> renderFrameRgba(
-          Sequence sequence, double position, int w, int h) async =>
-      _renderRgbaWithImage(sequence, position, w, h);
+    Sequence sequence,
+    double position,
+    int w,
+    int h,
+  ) async => _renderRgbaWithImage(sequence, position, w, h);
 
   /// Draws one frame through the exact same painter the editor canvas uses.
   Future<ui.Image> _renderOne(
@@ -225,7 +228,7 @@ class SequenceExporter {
     final scene = resolveScene(sequence, position);
     final objects = controller.visibleObjects(scene);
 
-    final viewport = Viewport(
+    final viewport = StageViewport(
       canvasSize: Size(w.toDouble(), h.toDouble()),
       stageSize: Vec2(
         controller.project.stageWidth,
@@ -258,6 +261,18 @@ class SequenceExporter {
   /// quantiser and the LZW encoder both want. Going through PNG here would
   /// cost an encode/decode round trip for nothing.
   Future<Uint8List> _renderRgba(
+    Sequence sequence,
+    double position,
+    int w,
+    int h,
+  ) async {
+    final frame = await _renderRgbaWithImage(sequence, position, w, h);
+    frame.image.dispose();
+    return frame.bytes;
+  }
+
+  /// Renders a frame and returns it together with its unpremultiplied RGBA copy.
+  Future<RenderedFrame> _renderRgbaWithImage(
     Sequence sequence,
     double position,
     int w,

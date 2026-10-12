@@ -29,19 +29,13 @@ class _StickSceneAppState extends State<StickSceneApp> {
   final ProjectRepository _repository = ProjectRepository();
   Locale _locale = const Locale('pt', 'BR');
 
-  @override
-  void dispose() {
-    _repository.saveState.dispose();
-    super.dispose();
-  }
-
   void _setLocale(Locale locale) {
     setState(() => _locale = locale);
   }
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
+    return Provider<ProjectRepository>.value(
       value: _repository,
       child: MaterialApp(
         title: 'StickScene',

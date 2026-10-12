@@ -8,11 +8,11 @@ import '../data/geometry.dart';
 ///
 /// Three things stack on top of each other, and keeping them separate is what
 /// lets the v-cam animation stay out of the way of the user's own navigation:
-///  1. [Viewport.userPan] / [Viewport.userZoom] - how the user is looking around
+///  1. [StageViewport.userPan] / [StageViewport.userZoom] - how the user is looking around
 ///  2. [CameraKey.zoom] / rotation / centre - the animated camera being previewed
 ///  3. the "fit the stage into the widget" scale
-class Viewport {
-  Viewport({
+class StageViewport {
+  StageViewport({
     required this.canvasSize,
     required this.stageSize,
     this.userPan = Vec2.zero,
@@ -76,7 +76,7 @@ class Viewport {
       ..translate(-cameraCenter.x, -cameraCenter.y);
   }
 
-  Viewport copyWith({
+  StageViewport copyWith({
     Size? canvasSize,
     Vec2? stageSize,
     Vec2? userPan,
@@ -85,7 +85,7 @@ class Viewport {
     double? cameraZoom,
     double? cameraRotation,
     double? padding,
-  }) => Viewport(
+  }) => StageViewport(
     canvasSize: canvasSize ?? this.canvasSize,
     stageSize: stageSize ?? this.stageSize,
     userPan: userPan ?? this.userPan,
@@ -97,7 +97,7 @@ class Viewport {
   );
 
   /// Clamps zoom so the user cannot get lost at 3000x or shrink to nothing.
-  Viewport withClampedZoom() {
+  StageViewport withClampedZoom() {
     final z = userZoom.clamp(0.15, 12.0);
     return userZoom == z ? this : copyWith(userZoom: z);
   }
@@ -109,4 +109,4 @@ extension ViewportShortcuts on Size {
 }
 
 /// Converts a scene-space length to pixels (for constant-width gizmos).
-double sceneLengthToPx(double length, Viewport vp) => length * vp.scale;
+double sceneLengthToPx(double length, StageViewport vp) => length * vp.scale;

@@ -348,7 +348,7 @@ void showCameraSheet(BuildContext context, EditorController c) {
                       c.clearCameraKeyframe();
                       setSheetState(() {});
                     },
-                    icon: const Icon(Icons.keyboard_delete_rounded),
+                    icon: const Icon(Icons.key_rounded),
                     label: Text(Strings.of(ctx).t('cameraClearKey')),
                   ),
                 ],
@@ -636,7 +636,6 @@ void showExportSheet(BuildContext context, EditorController c) {
     StatefulBuilder(
       builder: (ctx, setSheetState) {
         double scale = 0.5;
-        bool busy = false;
 
         return _Sheet(
           title: s.t('menuExport'),
@@ -662,12 +661,7 @@ void showExportSheet(BuildContext context, EditorController c) {
                     },
                   ),
                   const SizedBox(height: 8),
-                  if (busy)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  else ...[
+                  ...[
                     if (isVideoExportSupported)
                       _exportButton(
                         ctx,
@@ -753,15 +747,19 @@ Future<void> _runVideoExport(
       .replaceAll(RegExp(r'[^A-Za-z0-9 _-]'), '')
       .trim()
       .replaceAll(' ', '_');
-  final outFile = File('${outDir.path}/${safe.isEmpty ? 'animacao' : safe}.mp4');
+  final outFile = File(
+    '${outDir.path}/${safe.isEmpty ? 'animacao' : safe}.mp4',
+  );
 
   if (!context.mounted) return;
   final navigator = Navigator.of(context);
-  unawaited(showDialog<void>(
-    context: context,
-    barrierDismissible: false,
-    builder: (_) => _ExportProgressDialog(title: s.t('exporting')),
-  ));
+  unawaited(
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _ExportProgressDialog(title: s.t('exporting')),
+    ),
+  );
 
   final messenger = ScaffoldMessenger.of(context);
   try {
@@ -778,13 +776,15 @@ Future<void> _runVideoExport(
     );
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Text(
-          '${s.t('exportDone')} ${result.path}'
-          '${result.hasAudio ? '\n${s.f('exportVideoDone', {'0': (result.durationMs / 1000).toStringAsFixed(1)})}' : ''}',
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            '${s.t('exportDone')} ${result.path}'
+            '${result.hasAudio ? '\n${s.f('exportVideoDone', {'0': (result.durationMs / 1000).toStringAsFixed(1)})}' : ''}',
+          ),
+          duration: const Duration(seconds: 8),
         ),
-        duration: const Duration(seconds: 8),
-      ));
+      );
   } catch (e) {
     messenger
       ..hideCurrentSnackBar()
@@ -882,36 +882,44 @@ void showTextEditor(BuildContext context, EditorController c) {
                   maxLines: 4,
                   autofocus: true,
                   decoration: InputDecoration(
-                      labelText: s.t('textPlaceholder')),
+                    labelText: s.t('textPlaceholder'),
+                  ),
                 ),
                 const SizedBox(height: 12),
-                _slider(ctx, s.t('thickness'),
-                    working.fontSize, 10, 72, (v) {
+                _slider(ctx, s.t('thickness'), working.fontSize, 10, 72, (v) {
                   working = working.copy(working.id, fontSize: v);
                   setSheetState(() {});
                 }),
                 const SizedBox(height: 6),
-                Text(s.t('color'),
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text(
+                  s.t('color'),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 8),
                 _colorRow(ctx, working.color, (color) {
                   working = working.copy(working.id, color: color);
                   setSheetState(() {});
                 }),
                 const SizedBox(height: 14),
-                Text(s.t('bubble'),
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text(
+                  s.t('bubble'),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 6),
                 SegmentedButton<BubbleStyle>(
                   segments: [
                     ButtonSegment(
-                        value: BubbleStyle.none, label: Text(s.t('bubbleNone'))),
+                      value: BubbleStyle.none,
+                      label: Text(s.t('bubbleNone')),
+                    ),
                     ButtonSegment(
-                        value: BubbleStyle.rounded,
-                        label: Text(s.t('bubbleRounded'))),
+                      value: BubbleStyle.rounded,
+                      label: Text(s.t('bubbleRounded')),
+                    ),
                     ButtonSegment(
-                        value: BubbleStyle.tailRight,
-                        label: Text(s.t('bubbleTail'))),
+                      value: BubbleStyle.tailRight,
+                      label: Text(s.t('bubbleTail')),
+                    ),
                   ],
                   selected: {working.bubble},
                   onSelectionChanged: (v) {
@@ -922,12 +930,14 @@ void showTextEditor(BuildContext context, EditorController c) {
                 const SizedBox(height: 18),
                 FilledButton(
                   onPressed: () {
-                    c.updateObject(working.copy(
-                      working.id,
-                      text: textController.text.trim().isEmpty
-                          ? s.t('textPlaceholder')
-                          : textController.text.trim(),
-                    ));
+                    c.updateObject(
+                      working.copy(
+                        working.id,
+                        text: textController.text.trim().isEmpty
+                            ? s.t('textPlaceholder')
+                            : textController.text.trim(),
+                      ),
+                    );
                     Navigator.pop(ctx);
                   },
                   child: Text(s.t('menuSave')),
@@ -942,11 +952,18 @@ void showTextEditor(BuildContext context, EditorController c) {
   );
 }
 
-Widget _colorRow(
-    BuildContext context, int current, ValueChanged<int> onPick) {
+Widget _colorRow(BuildContext context, int current, ValueChanged<int> onPick) {
   const swatches = <int>[
-    0xFF14161A, 0xFFFFFFFF, 0xFF3B82F6, 0xFFEF4444, 0xFFF59E0B,
-    0xFF10B981, 0xFF8B5CF6, 0xFFEC4899, 0xFF0EA5E9, 0xFF92400E,
+    0xFF14161A,
+    0xFFFFFFFF,
+    0xFF3B82F6,
+    0xFFEF4444,
+    0xFFF59E0B,
+    0xFF10B981,
+    0xFF8B5CF6,
+    0xFFEC4899,
+    0xFF0EA5E9,
+    0xFF92400E,
   ];
   final p = paletteOf(context);
   return Wrap(
@@ -996,7 +1013,9 @@ Future<void> importSprite(
       allowedExtensions: _imageExtensions,
     );
   } catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text('${s.t('genericError')}: $e')));
+    messenger.showSnackBar(
+      SnackBar(content: Text('${s.t('genericError')}: $e')),
+    );
     return;
   }
   if (picked == null || picked.files.isEmpty) return;
@@ -1024,15 +1043,17 @@ Future<void> importSprite(
     // A vertical strip keeps the natural aspect and needs no padding math.
     spriteColumns: 1,
     spriteRows: analysis.frames,
-    transform: Transform2D(translation: at ?? c.project.activeSequence.frames.isEmpty
-        ? Vec2.zero
-        : const Vec2(240, 320)),
+    transform: Transform2D(translation: at ?? const Vec2(240, 320)),
   );
 
   c.addObject(sprite);
   if (context.mounted) {
     messenger.showSnackBar(
-      SnackBar(content: Text('${sprite.name.isEmpty ? relative : sprite.name} - ${analysis.frames} frame(s)')),
+      SnackBar(
+        content: Text(
+          '${sprite.name.isEmpty ? relative : sprite.name} - ${analysis.frames} frame(s)',
+        ),
+      ),
     );
   }
 }
@@ -1068,7 +1089,9 @@ Future<MediaAnalysis?> analyseMedia(String path) async {
     codec.dispose();
 
     final realFrames = count <= 1 ? 1 : count - 1;
-    final fps = realFrames <= 1 ? 0.0 : (realFrames * 1000.0 / totalMs).clamp(1.0, 30.0);
+    final fps = realFrames <= 1
+        ? 0.0
+        : (realFrames * 1000.0 / totalMs).clamp(1.0, 30.0);
     return MediaAnalysis(w, h, realFrames, fps);
   } catch (_) {
     return null;
@@ -1125,13 +1148,16 @@ void showMovieclipSheet(BuildContext context, EditorController c) {
                       tooltip: 'Usar',
                       icon: const Icon(Icons.add_location_alt_rounded),
                       onPressed: () {
-                        c.addObject(MovieclipObject(
-                          id: 'clip-${DateTime.now().microsecondsSinceEpoch}',
-                          clipId: clip.id,
-                          lengthFrames: clip.sequence.frames.length,
-                          transform: const Transform2D(
-                              translation: Vec2(240, 320)),
-                        ));
+                        c.addObject(
+                          MovieclipObject(
+                            id: 'clip-${DateTime.now().microsecondsSinceEpoch}',
+                            clipId: clip.id,
+                            lengthFrames: clip.sequence.frames.length,
+                            transform: const Transform2D(
+                              translation: Vec2(240, 320),
+                            ),
+                          ),
+                        );
                         Navigator.pop(ctx);
                       },
                     ),

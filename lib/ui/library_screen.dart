@@ -47,11 +47,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
     await _refresh();
   }
 
-  // Stored outside SharedPreferences so the app carries no extra plugin; the
-  // intro flag only needs to survive a restart.
-  Future<Map<String, bool>> _prefs() async {
-    return _Prefs.instance;
-  }
+  // The intro flag only needs to survive a restart, so it lives in a tiny
+  // in-process store rather than pulling in a preferences plugin.
+  Future<_Prefs> _prefs() async => _Prefs.instance;
 
   Future<void> _refresh() async {
     final list = await _repo.listProjects();
@@ -478,12 +476,16 @@ Future<String?> _askForName(
   );
 }
 
-/// Tiny in-memory flag store. Replaced by real preferences if the app ever
-/// needs more than "has the intro been seen".
+/// Tiny in-memory flag store. Swap for real preferences if the app ever needs
+/// more than "has the intro been seen".
 class _Prefs {
-  static final Map<String, bool> _data = <String, bool>{};
-  static const _Prefs instance = _Prefs();
-  bool getBool(String key) => _data[key];
+  _Prefs();
+
+  static final _Prefs instance = _Prefs();
+  final Map<String, bool> _data = <String, bool>{};
+
+  bool? getBool(String key) => _data[key];
+
   Future<void> setBool(String key, bool value) async => _data[key] = value;
 }
 

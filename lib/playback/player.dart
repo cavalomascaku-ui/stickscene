@@ -18,11 +18,9 @@ class SequencePlayer extends ChangeNotifier {
   Sequence? _sequence;
   double _position = 0;
   bool _playing = false;
-  Duration _lastTick = Duration.zero;
 
   /// Currently loaded media handles, keyed by the cue's asset path.
   final Map<String, AudioPlayer> _cuePlayers = {};
-  final Map<String, AudioPlayer> _cueCooldowns = {};
   AudioPlayer? _musicPlayer;
 
   /// Set when the sequence's music track changes so it can be restarted.

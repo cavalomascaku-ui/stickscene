@@ -94,7 +94,7 @@ class EditorController extends ChangeNotifier {
 
   /// Mutates without touching history. For continuous gestures (dragging a
   /// handle) where each pixel would otherwise become an undo step.
-  void mutateLive(T Function() action) {
+  void mutateLive<T>(T Function() action) {
     action();
     notifyListeners();
     _repo.scheduleAutosave(project);

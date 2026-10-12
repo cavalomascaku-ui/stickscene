@@ -13,7 +13,7 @@ enum ObjectKind { stroke, circle, figure, fill, text, sprite, movieclip }
 
 enum CapStyle { round, square, butt }
 
-enum TextAlign { left, center, right }
+enum LabelAlign { left, center, right }
 
 enum BubbleStyle { none, rounded, tailLeft, tailRight }
 
@@ -391,6 +391,43 @@ class FillObject extends SceneObject {
 
 /// The stick figure. Holds its own bone list plus named anchors, which is what
 /// makes tweening between frames possible.
+/// Fills each bone's `a`/`b` from the anchors it references.
+///
+/// Lives here rather than in stick_rigs.dart because it is a property of the
+/// model: any code that moves an anchor has to re-resolve, and the data layer
+/// cannot depend on the editor layer.
+FigureObject resolveFigure(FigureObject fig) {
+  final bones = fig.bones.map((b) {
+    final copy = b.copy();
+    final anchorA = b.anchorA;
+    final anchorB = b.anchorB;
+    if (anchorA != null) {
+      final p = fig.anchors[anchorA];
+      if (p != null) copy.a = p;
+    }
+    if (anchorB != null) {
+      final p = fig.anchors[anchorB];
+      if (p != null) copy.b = p;
+    }
+    return copy;
+  }).toList();
+
+  return FigureObject(
+    id: fig.id,
+    name: fig.name,
+    bones: bones,
+    joints: fig.joints,
+    anchors: Map<Anchor, Vec2>.from(fig.anchors),
+    thickness: fig.thickness,
+    color: fig.color,
+    showJoints: fig.showJoints,
+    transform: fig.transform,
+    visible: fig.visible,
+    locked: fig.locked,
+    opacity: fig.opacity,
+  );
+}
+
 class FigureObject extends SceneObject {
   FigureObject({
     required super.id,
@@ -453,6 +490,31 @@ class FigureObject extends SceneObject {
     return box ?? const Rect2(0, 0, 0, 0);
   }
 
+  /// Copy under [newId] with optional overrides. The pose editor uses this to
+  /// swap a pose while keeping the figure's identity, which is what lets the
+  /// tweener match it against the neighbouring frames.
+  FigureObject copy(
+    String newId, {
+    Map<Anchor, Vec2>? anchors,
+    int? color,
+    double? thickness,
+  }) => resolveFigure(
+    FigureObject(
+      id: newId,
+      bones: bones,
+      joints: joints,
+      anchors: anchors ?? Map<Anchor, Vec2>.from(this.anchors),
+      thickness: thickness ?? this.thickness,
+      color: color ?? this.color,
+      showJoints: showJoints,
+      name: name,
+      transform: transform,
+      visible: visible,
+      locked: locked,
+      opacity: opacity,
+    ),
+  );
+
   @override
   FigureObject duplicate(String newId) => FigureObject(
     id: newId,
@@ -489,7 +551,7 @@ class TextObject extends SceneObject {
     this.color = 0xFF111111,
     this.backgroundColor,
     this.bubble = BubbleStyle.rounded,
-    this.align = TextAlign.center,
+    this.align = LabelAlign.center,
     this.padding = 10,
     this.outlineColor = 0xFFFFFFFF,
     super.name,
@@ -504,7 +566,7 @@ class TextObject extends SceneObject {
   int color;
   int? backgroundColor;
   BubbleStyle bubble;
-  TextAlign align;
+  LabelAlign align;
   double padding;
   int outlineColor;
 
@@ -536,23 +598,22 @@ class TextObject extends SceneObject {
     int? color,
     int? backgroundColor,
     BubbleStyle? bubble,
-  }) =>
-      TextObject(
-        id: newId,
-        text: text ?? this.text,
-        fontSize: fontSize ?? this.fontSize,
-        color: color ?? this.color,
-        backgroundColor: backgroundColor ?? this.backgroundColor,
-        bubble: bubble ?? this.bubble,
-        align: align,
-        padding: padding,
-        outlineColor: outlineColor,
-        name: name,
-        transform: transform,
-        visible: visible,
-        locked: locked,
-        opacity: opacity,
-      );
+  }) => TextObject(
+    id: newId,
+    text: text ?? this.text,
+    fontSize: fontSize ?? this.fontSize,
+    color: color ?? this.color,
+    backgroundColor: backgroundColor ?? this.backgroundColor,
+    bubble: bubble ?? this.bubble,
+    align: align,
+    padding: padding,
+    outlineColor: outlineColor,
+    name: name,
+    transform: transform,
+    visible: visible,
+    locked: locked,
+    opacity: opacity,
+  );
 
   @override
   TextObject duplicate(String newId) => TextObject(
@@ -638,22 +699,21 @@ class SpriteObject extends SceneObject {
     double? spriteFps,
     int? spriteColumns,
     int? spriteRows,
-  }) =>
-      SpriteObject(
-        id: newId,
-        assetPath: assetPath ?? this.assetPath,
-        naturalWidth: naturalWidth ?? this.naturalWidth,
-        naturalHeight: naturalHeight ?? this.naturalHeight,
-        spriteFrames: spriteFrames ?? this.spriteFrames,
-        spriteFps: spriteFps ?? this.spriteFps,
-        spriteColumns: spriteColumns ?? this.spriteColumns,
-        spriteRows: spriteRows ?? this.spriteRows,
-        name: name,
-        transform: transform,
-        visible: visible,
-        locked: locked,
-        opacity: opacity,
-      );
+  }) => SpriteObject(
+    id: newId,
+    assetPath: assetPath ?? this.assetPath,
+    naturalWidth: naturalWidth ?? this.naturalWidth,
+    naturalHeight: naturalHeight ?? this.naturalHeight,
+    spriteFrames: spriteFrames ?? this.spriteFrames,
+    spriteFps: spriteFps ?? this.spriteFps,
+    spriteColumns: spriteColumns ?? this.spriteColumns,
+    spriteRows: spriteRows ?? this.spriteRows,
+    name: name,
+    transform: transform,
+    visible: visible,
+    locked: locked,
+    opacity: opacity,
+  );
 
   @override
   SpriteObject duplicate(String newId) => SpriteObject(
@@ -859,9 +919,9 @@ SceneObject sceneObjectFromJson(Map<String, dynamic> j) {
           (e) => e.name == j['bub'],
           orElse: () => BubbleStyle.rounded,
         ),
-        align: TextAlign.values.firstWhere(
+        align: LabelAlign.values.firstWhere(
           (e) => e.name == j['align'],
-          orElse: () => TextAlign.center,
+          orElse: () => LabelAlign.center,
         ),
         padding: (j['pad'] as num?)?.toDouble() ?? 10,
         outlineColor: (j['ol'] as num?)?.toInt() ?? 0xFFFFFFFF,
@@ -919,6 +979,13 @@ class CameraKey {
   static final defaultCamera = CameraKey();
 
   CameraKey copy() => CameraKey(center: center, zoom: zoom, rotation: rotation);
+
+  CameraKey copyWith({Vec2? center, double? zoom, double? rotation}) =>
+      CameraKey(
+        center: center ?? this.center,
+        zoom: zoom ?? this.zoom,
+        rotation: rotation ?? this.rotation,
+      );
 
   CameraKey interpolated(CameraKey other, double t) {
     var d = other.rotation - rotation;

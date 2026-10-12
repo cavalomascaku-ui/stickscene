@@ -23,11 +23,11 @@ class AudioPlacement {
   final int durationMs;
 
   Map<String, Object?> toMap() => {
-        'path': path,
-        'startMs': startMs,
-        'volume': volume,
-        'durationMs': durationMs,
-      };
+    'path': path,
+    'startMs': startMs,
+    'volume': volume,
+    'durationMs': durationMs,
+  };
 }
 
 class VideoExportOutcome {
@@ -69,8 +69,7 @@ class VideoExporter {
   final double stageHeight;
   MethodChannel? _channel;
 
-  MethodChannel get _ch =>
-      _channel ??= MethodChannel(channelName);
+  MethodChannel get _ch => _channel ??= MethodChannel(channelName);
 
   Future<VideoExportOutcome> export({
     required Sequence sequence,
@@ -82,7 +81,8 @@ class VideoExporter {
   }) async {
     if (!isVideoExportSupported) {
       throw UnsupportedError(
-          'MP4 export needs Android. GIF and PNG exports work everywhere.');
+        'MP4 export needs Android. GIF and PNG exports work everywhere.',
+      );
     }
 
     final fps = targetFps ?? sequence.fps.clamp(1, 60);
@@ -96,8 +96,9 @@ class VideoExporter {
     }
 
     final placements = buildAudioPlacements(sequence, fps);
-    final totalMs = (sequence.frames.isEmpty ? 0 : 1000 / fps * frameSlots(sequence))
-        .round();
+    final totalMs =
+        (sequence.frames.isEmpty ? 0 : 1000 / fps * frameSlots(sequence))
+            .round();
 
     await _ch.invokeMethod<void>('startExport', {
       'path': outputPath,
@@ -113,12 +114,13 @@ class VideoExporter {
     try {
       for (var i = 0; i < positions.length; i++) {
         final rgba = await renderer.renderFrameRgba(
-            sequence, positions[i], outW, outH);
+          sequence,
+          positions[i],
+          outW,
+          outH,
+        );
         final png = await _encodePng(rgba.image, rgba.bytes);
-        await _ch.invokeMethod<void>('addFrame', {
-          'png': png,
-          'index': i,
-        });
+        await _ch.invokeMethod<void>('addFrame', {'png': png, 'index': i});
         rgba.image.dispose();
         onProgress?.call((i + 1) / positions.length, i + 1, positions.length);
       }
@@ -152,7 +154,7 @@ class VideoExporter {
   /// Rough bitrate: ~0.08 bits per pixel per frame keeps line art crisp without
   /// producing a file the size of a movie.
   static int suggestedBitrate(int w, int h, int fps) =>
-      (w * h * fps * 0.12).round().clamp(800_000, 16_000_000);
+      (w * h * fps * 0.12).round().clamp(800000, 16000000);
 
   /// Total timeline slots, honouring per-frame holds.
   static int frameSlots(Sequence sequence) {
@@ -177,12 +179,14 @@ class VideoExporter {
         if (cue.spriteFrames > 0) continue; // animated images are not sound
         final file = File(cue.assetPath);
         if (!file.existsSync()) continue;
-        out.add(AudioPlacement(
-          path: cue.assetPath,
-          startMs: frameStartMs + (cue.startFrame / fps * 1000).round(),
-          volume: cue.volume.clamp(0.0, 1.0),
-          durationMs: (cue.durationSeconds * 1000).round(),
-        ));
+        out.add(
+          AudioPlacement(
+            path: cue.assetPath,
+            startMs: frameStartMs + (cue.startFrame / fps * 1000).round(),
+            volume: cue.volume.clamp(0.0, 1.0),
+            durationMs: (cue.durationSeconds * 1000).round(),
+          ),
+        );
       }
       slotCursor += hold;
     }
@@ -213,8 +217,7 @@ class VideoExporter {
 
     final total = slots.length;
     final sourceFps = sequence.fps <= 0 ? 12 : sequence.fps;
-    final count =
-        ((total / sourceFps) * fps).round().clamp(1, 4000);
+    final count = ((total / sourceFps) * fps).round().clamp(1, 4000);
 
     final out = <double>[];
     for (var k = 0; k < count; k++) {
@@ -224,9 +227,8 @@ class VideoExporter {
       final frameIndex = slots[idx];
       // Only blend into the next pose once we are past the midpoint of this
       // slot, otherwise a held frame would drift into its neighbour.
-      final blendable = idx + 1 < total &&
-          slots[idx + 1] != frameIndex &&
-          frac > 0.5;
+      final blendable =
+          idx + 1 < total && slots[idx + 1] != frameIndex && frac > 0.5;
       out.add(blendable ? frameIndex + (frac - 0.5) : frameIndex.toDouble());
     }
     return out;

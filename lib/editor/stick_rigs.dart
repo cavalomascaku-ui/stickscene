@@ -107,32 +107,7 @@ class StickRigs {
   }
 
   /// Fills each bone's `a`/`b` from its anchors. Called after any anchor edit.
-  static FigureObject resolveBones(FigureObject fig) {
-    final bones = fig.bones.map((b) {
-      final copy = b.copy();
-      if (b.anchorA != null && fig.anchors[b.anchorA!] != null) {
-        copy.a = fig.anchors[b.anchorA!]!;
-      }
-      if (b.anchorB != null && fig.anchors[b.anchorB!] != null) {
-        copy.b = fig.anchors[b.anchorB!]!;
-      }
-      return copy;
-    }).toList();
-    return FigureObject(
-      id: fig.id,
-      name: fig.name,
-      bones: bones,
-      joints: fig.joints,
-      anchors: Map<Anchor, Vec2>.from(fig.anchors),
-      thickness: fig.thickness,
-      color: fig.color,
-      showJoints: fig.showJoints,
-      transform: fig.transform,
-      visible: fig.visible,
-      locked: fig.locked,
-      opacity: fig.opacity,
-    );
-  }
+  static FigureObject resolveBones(FigureObject fig) => resolveFigure(fig);
 
   // -------------------------------------------------------------------------
   // Poses

@@ -17,7 +17,7 @@ class Strings {
 
   bool get isPt => locale.languageCode == 'pt';
 
-  static const supported = <Locale>[Locale('pt', 'BR'), Locale('en')];
+  static final supported = <Locale>[Locale('pt', 'BR'), Locale('en')];
 
   static Strings of(BuildContext context) =>
       Localizations.of<Strings>(context, Strings) ??

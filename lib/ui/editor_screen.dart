@@ -1,8 +1,10 @@
-import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'dart:ui' show FontFeature;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 import '../core/theme.dart';
 import '../data/geometry.dart';
@@ -46,8 +48,10 @@ class _EditorScreenState extends State<EditorScreen>
   Vec2 _userPan = Vec2.zero;
   double _userZoom = 1.0;
 
-  /// Background images are picked as a path relative to the project folder;
-  /// the cache is keyed by the absolute path, so resolve once per frame.
+  /// Background images are picked as a path relative to the project folder.
+  /// Decoding is async, so the decoded image is cached here and refreshed
+  /// whenever the path changes rather than on every repaint.
+  ui.Image? _backgroundImage;
   String? _backgroundImagePath;
   int _backgroundStamp = -1;
 
@@ -56,9 +60,27 @@ class _EditorScreenState extends State<EditorScreen>
     final stamp = relative?.hashCode ?? -1;
     if (stamp == _backgroundStamp) return;
     _backgroundStamp = stamp;
+
+    final previous = _backgroundImage;
+    _backgroundImage = null;
     _backgroundImagePath = relative == null
         ? null
-        : '${widget.handle.directory.path}/\$relative';
+        : '${widget.handle.directory.path}/$relative';
+    if (previous != null) previous.dispose();
+
+    final path = _backgroundImagePath;
+    if (path == null) return;
+    // Fire and forget: the painter shows nothing until the image lands, then
+    // the next repaint picks it up.
+    _media.load(path).then((img) {
+      if (!mounted || img == null) return;
+      if (_backgroundImagePath != path) {
+        img.dispose();
+        return;
+      }
+      _backgroundImage = img;
+      setState(() {});
+    });
   }
 
   // Drag state
@@ -126,7 +148,7 @@ class _EditorScreenState extends State<EditorScreen>
     return true;
   }
 
-  Viewport _viewport(Size size) => Viewport(
+  StageViewport _viewport(Size size) => StageViewport(
     canvasSize: size,
     stageSize: Vec2(
       _controller.project.stageWidth,
@@ -184,6 +206,10 @@ class _EditorScreenState extends State<EditorScreen>
       return;
     }
 
+    final sceneNow = vp.viewToScene(
+      Vec2(d.localFocalPoint.dx, d.localFocalPoint.dy),
+    );
+
     if (_strokePoints != null) {
       // Drop sub-pixel jitter: fewer points means a smaller file and a
       // smoother-looking line once the stroke is drawn.
@@ -199,15 +225,15 @@ class _EditorScreenState extends State<EditorScreen>
       if (_controller.tool == EditorTool.pan ||
           d.focalPointDelta.distance > 0) {
         if (_controller.tool == EditorTool.pan) {
-          setState(() => _userPan = _userPan + d.focalPointDelta);
+          setState(
+            () => _userPan =
+                _userPan + Vec2(d.focalPointDelta.dx, d.focalPointDelta.dy),
+          );
         }
       }
       return;
     }
 
-    final sceneNow = vp.viewToScene(
-      Vec2(d.localFocalPoint.dx, d.localFocalPoint.dy),
-    );
     final delta = sceneNow - _dragStartScene;
     if (delta.length > 0.5) _dragMoved = true;
 
@@ -237,12 +263,14 @@ class _EditorScreenState extends State<EditorScreen>
       _strokePoints = null;
       if (points.length >= 2) {
         _controller.mutate(() {
-          _controller.addObject(StrokeObject(
-            id: _newId('stroke'),
-            points: points,
-            color: _inkColor,
-            thickness: _inkThickness,
-          ));
+          _controller.addObject(
+            StrokeObject(
+              id: _newId('stroke'),
+              points: points,
+              color: _inkColor,
+              thickness: _inkThickness,
+            ),
+          );
         });
       }
       setState(() {});
@@ -267,6 +295,7 @@ class _EditorScreenState extends State<EditorScreen>
   }
 
   void _onTapUp(TapUpDetails d, Size size) {
+    final s = Strings.of(context);
     final vp = _viewport(size);
     final scene = vp.viewToScene(Vec2(d.localPosition.dx, d.localPosition.dy));
 
@@ -288,11 +317,13 @@ class _EditorScreenState extends State<EditorScreen>
     }
 
     if (_controller.tool == EditorTool.text) {
-      _controller.addObject(TextObject(
-        id: _newId('text'),
-        text: s.t('textPlaceholder'),
-        transform: Transform2D(translation: scene),
-      ));
+      _controller.addObject(
+        TextObject(
+          id: _newId('text'),
+          text: s.t('textPlaceholder'),
+          transform: Transform2D(translation: scene),
+        ),
+      );
       _controller.tool = EditorTool.select;
       showTextEditor(context, _controller);
       setState(() {});
@@ -316,7 +347,7 @@ class _EditorScreenState extends State<EditorScreen>
     setState(() {});
   }
 
-  SceneObject? _pick(Vec2 scenePoint, Viewport vp) {
+  SceneObject? _pick(Vec2 scenePoint, StageViewport vp) {
     final scene = _controller.resolveAt(_controller.currentFrame.toDouble());
     final objects = _controller.visibleObjects(scene);
     // Topmost first: draw order is last-in-list.
@@ -329,7 +360,7 @@ class _EditorScreenState extends State<EditorScreen>
     return null;
   }
 
-  Anchor? _pickAnchor(FigureObject fig, Vec2 scenePoint, Viewport vp) {
+  Anchor? _pickAnchor(FigureObject fig, Vec2 scenePoint, StageViewport vp) {
     const handleRadius = 12.0;
     Anchor? best;
     var bestDist = handleRadius * handleRadius;
@@ -352,6 +383,7 @@ class _EditorScreenState extends State<EditorScreen>
   Widget build(BuildContext context) {
     final s = Strings.of(context);
     final p = paletteOf(context);
+    _syncBackgroundImage();
 
     return PopScope(
       canPop: false,
@@ -461,11 +493,7 @@ class _EditorScreenState extends State<EditorScreen>
                 viewport: vp,
                 objects: objects,
                 backgroundColor: Color(_controller.sequence.background.color),
-                backgroundImage: _syncBackgroundImage() == null
-                    ? null
-                    : _media.peek(_syncBackgroundImage()!) ??
-                          _media.load(_syncBackgroundImage()!) ??
-                          null,
+                backgroundImage: _backgroundImage,
                 media: _media,
                 onion: _buildOnion(),
                 selectedId: _controller.selectedObjectId,
@@ -518,7 +546,8 @@ class _EditorScreenState extends State<EditorScreen>
   /// Ink style row, shown only when a drawing tool is active so it never gets
   /// in the way of the common case.
   Widget _buildInkRow(AppPalette p) {
-    final drawing = _controller.tool == EditorTool.pen ||
+    final drawing =
+        _controller.tool == EditorTool.pen ||
         _controller.tool == EditorTool.circle;
     return AnimatedSize(
       duration: const Duration(milliseconds: 150),
@@ -611,7 +640,11 @@ class _EditorScreenState extends State<EditorScreen>
       child: Row(
         children: [
           tool(EditorTool.select, Icons.near_me_rounded, s.t('toolSelect')),
-          tool(EditorTool.figure, Icons.accessibility_new_rounded, s.t('toolFigure')),
+          tool(
+            EditorTool.figure,
+            Icons.accessibility_new_rounded,
+            s.t('toolFigure'),
+          ),
           tool(EditorTool.pen, Icons.edit_rounded, s.t('toolPen')),
           tool(EditorTool.circle, Icons.circle_outlined, s.t('toolCircle')),
           tool(EditorTool.text, Icons.title_rounded, s.t('toolText')),
@@ -722,7 +755,7 @@ class _EditorScreenState extends State<EditorScreen>
           ),
           const SizedBox(width: 10),
           _RoundIconButton(
-            icon: Icons.accessories_rounded,
+            icon: Icons.face_rounded,
             tooltip: s.t('toolFigure'),
             onTap: () => showPoseSheet(context, _controller, _newId),
           ),
@@ -1018,16 +1051,3 @@ class _SaveIndicatorState extends State<_SaveIndicator> {
     );
   }
 }
-
-/// Re-exported for panels that need it.
-typedef NewId = String Function(String prefix);
-
-/// Convenience for panels that need the stage size.
-Size stageSizeOf(EditorController c) =>
-    Size(c.project.stageWidth, c.project.stageHeight);
-
-/// Used by the export sheet to clamp very large outputs.
-double clampExportScale(double v) => v.clamp(0.15, 3.0) as double;
-
-/// Utility used by the timeline for consistent easing.
-double easeInOut(double t) => math.sin(math.pi * t.clamp(0, 1));

@@ -31,13 +31,15 @@ class ScenePainter extends CustomPainter {
     this.onion = const [],
     this.selectedId,
     this.activeStroke,
+    this.activeStrokeColor = 0xFF14161A,
+    this.activeStrokeThickness = 9,
     this.frameIndex = 0,
     this.showHandles = true,
     this.showStageBorder = true,
     this.emptyHint = 'Toque + para adicionar um boneco',
   }) : super(repaint: null);
 
-  final Viewport viewport;
+  final StageViewport viewport;
   final List<SceneObject> objects;
   final Color backgroundColor;
   final ui.Image? backgroundImage;
@@ -142,7 +144,7 @@ class ScenePainter extends CustomPainter {
     }
   }
 
-  void _clipRotatedStage(Canvas canvas, Viewport vp, Rect stagePx) {
+  void _clipRotatedStage(Canvas canvas, StageViewport vp, Rect stagePx) {
     // Rotating about the stage centre matches how the camera feels.
     if (vp.cameraRotation == 0) {
       canvas.clipRect(stagePx);
@@ -391,9 +393,9 @@ class ScenePainter extends CustomPainter {
         ),
       ),
       textAlign: switch (o.align) {
-        TextAlign.left => TextAlign.left,
-        TextAlign.center => TextAlign.center,
-        TextAlign.right => TextAlign.right,
+        LabelAlign.left => TextAlign.left,
+        LabelAlign.center => LabelAlign.center,
+        LabelAlign.right => TextAlign.right,
       },
       textDirection: TextDirection.ltr,
     )..layout(maxWidth: math.max(size.width - o.padding * 2, 24));
@@ -511,7 +513,7 @@ class ScenePainter extends CustomPainter {
   // Selection
   // -------------------------------------------------------------------------
 
-  void _drawSelection(Canvas canvas, Viewport vp, SceneObject o) {
+  void _drawSelection(Canvas canvas, StageViewport vp, SceneObject o) {
     final bounds = o.localBounds.transformedBy(o.transform);
     if (bounds.isEmpty) return;
 
